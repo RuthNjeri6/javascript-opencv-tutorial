@@ -1,0 +1,4 @@
+# javascript-opencv-tutorial
+OpenCV, or Open Source Computer Vision Library, is a powerful library used for image processing and image recognition. The library has a massive community and has been used extensively in many fields, from face detection to interactive art. It was first built in C++, but bindings have been created for different languages, such as Python and Java. It is even available in JavaScript as OpenCV.js, which is what we’ll be using for this tutorial.
+
+In this project, we will create a webpage where a user can upload an image in order to detect all the circles contained in it. We will highlight the circles with a black outline, and the user will be able to download the modified image.
