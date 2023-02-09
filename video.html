@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>video Streaming</title>
+</head>
+<body>
+    <div class="d-flex justify-content-center">
+        <video id="video">Video stream not available</video>
+    <canvas id="canvas" > </canvas>
+    </div>
+</body>
+<script async onload="onOpenCvReady();" src="opencv.js"></script>
+<script src="utils.js"></script>
+<script>
+var streaming = false;
+var canvas = document.getElementById('canvas');
+var video = document.getElementById('video');
+function onOpenCvReady() {
+    document.body.classList.remove('loading');
+    getStream();   
+} 
+let getStream = async () => {
+    await navigator.mediaDevices.getUserMedia({video: true}).then(async stream  => {
+        console.log('Media gotten successfully');
+        video.srcObject = stream;
+        video.play();
+        streaming = true;
+    }).catch((err) => { console.log("An error occurred: " + err); })
+    video.addEventListener('canplay', () => {
+        video.height = video.videoHeight;
+        video.width = video.videoWidth;
+        let src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+        let dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+        let gray = new cv.Mat();
+        let cap = new cv.VideoCapture(video);
+                    
+        let faces = new cv.RectVector();
+        let classifier = new cv.CascadeClassifier();
+        let faceCascadeFile = "haarcascade_frontalface_default.xml"; // path to xml
+        let utils = new Utils('errorMessage');
+        try {
+            console.log('loading');
+            utils.createFileFromUrl(faceCascadeFile, faceCascadeFile, () => {
+            // load pre-trained classifiers
+            console.log('cascade ready...');
+            classifier.load(faceCascadeFile); 
+            })
+        } catch(err) {
+            console.log(err)
+        }
+        
+        const FPS = 30;
+
+        function processVideo() {
+            try {
+                if (!streaming) {
+                    src.delete();
+                    dst.delete();
+                    return;
+                }
+                console.log('begin processing...')
+                let begin = Date.now();
+                cap.read(src);
+                console.log('read frame...')                            
+                src.copyTo(dst);
+                cv.cvtColor(dst, gray, cv.COLOR_RGBA2GRAY, 0);
+                console.log('convert frame to grayscale...')
+                // detect faces.
+                try{
+                    classifier.detectMultiScale(gray, faces, 1.1, 3, 0);
+                    console.log(faces.size());
+                }catch(err){
+                    console.log(err);
+                }
+                console.log('detect faces.')
+                // draw faces.
+                for (let i = 0; i < faces.size(); ++i) {
+                    let face = faces.get(i);
+                    let point1 = new cv.Point(face.x, face.y);
+                    let point2 = new cv.Point(face.x + face.width, face.y + face.height);
+                    cv.rectangle(dst, point1, point2, [255, 0, 0, 255]);
+                }
+                console.log('draw faces.')
+                cv.imshow("canvas", dst);
+                console.log('show image...')
+                // schedule next one.
+                let delay = 1000/FPS - (Date.now() - begin);
+                setTimeout(processVideo, delay);
+            } catch(err) {
+                console.log(err)
+            }
+        }
+        setTimeout(processVideo, 0);
+    })
+}
+</script>
+</html>
